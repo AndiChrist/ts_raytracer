@@ -230,6 +230,7 @@
             <div class="control-group">
                 <h3>Rendering</h3>
                 <button id="render-btn" class="btn">Szene Rendern</button>
+                <button id="export-btn" class="btn secondary">Als PNG Exportieren</button>
 
                 <div class="setting">
                     <label for="max-depth">Reflexionstiefe:</label>
@@ -282,6 +283,7 @@
         console.log('App ready, initializing UI...');
 
         const renderBtn = document.getElementById('render-btn');
+        const exportBtn = document.getElementById('export-btn');
         const progressFill = document.getElementById('progress-fill');
         const progressText = document.getElementById('progress-text');
         const maxDepthSlider = document.getElementById('max-depth');
@@ -369,6 +371,18 @@
             } catch (error) {
                 console.error('Error loading custom scene:', error);
                 status.textContent = '❌ Fehler: ' + error.message;
+            }
+        });
+
+        exportBtn.addEventListener('click', () => {
+            try {
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                const filename = `raytracer-${timestamp}.png`;
+                app.exportImage(filename);
+                status.textContent = `✅ Bild exportiert: ${filename}`;
+            } catch (error) {
+                console.error('Error exporting image:', error);
+                status.textContent = '❌ Export-Fehler: ' + error.message;
             }
         });
 

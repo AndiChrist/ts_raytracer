@@ -1,4 +1,4 @@
-import type { Scene, Ray, HitInfo, Color, SceneObject, Sphere, Plane, Light } from '../types/scene.types';
+import type { Scene, Ray, HitInfo, Color, SceneObject, Sphere, Plane, Triangle, Box, Light } from '../types/scene.types';
 import { Vector3 } from '../math/Vector3';
 
 export class Raytracer {
@@ -173,6 +173,10 @@ export class Raytracer {
                 return this.intersectSphere(ray, obj);
             case 'plane':
                 return this.intersectPlane(ray, obj);
+            case 'triangle':
+                return this.intersectTriangle(ray, obj);
+            case 'box':
+                return this.intersectBox(ray, obj);
             default:
                 return {
                     hit: false,
@@ -270,6 +274,135 @@ export class Raytracer {
             point: hitPoint.toVec3(),
             normal: normal.toVec3(),
             material: plane.material
+        };
+    }
+
+    private intersectTriangle(ray: Ray, triangle: Triangle): HitInfo {
+        // Möller-Trumbore intersection algorithm
+        const rayOrigin = Vector3.fromVec3(ray.origin);
+        const rayDir = Vector3.fromVec3(ray.direction);
+        const v0 = Vector3.fromVec3(triangle.v0);
+        const v1 = Vector3.fromVec3(triangle.v1);
+        const v2 = Vector3.fromVec3(triangle.v2);
+
+        const edge1 = v1.subtract(v0);
+        const edge2 = v2.subtract(v0);
+        const h = rayDir.cross(edge2);
+        const a = edge1.dot(h);
+
+        if (Math.abs(a) < 0.0001) {
+            return {
+                hit: false,
+                distance: Infinity,
+                point: { x: 0, y: 0, z: 0 },
+                normal: { x: 0, y: 0, z: 0 },
+                material: triangle.material
+            };
+        }
+
+        const f = 1.0 / a;
+        const s = rayOrigin.subtract(v0);
+        const u = f * s.dot(h);
+
+        if (u < 0.0 || u > 1.0) {
+            return {
+                hit: false,
+                distance: Infinity,
+                point: { x: 0, y: 0, z: 0 },
+                normal: { x: 0, y: 0, z: 0 },
+                material: triangle.material
+            };
+        }
+
+        const q = s.cross(edge1);
+        const v = f * rayDir.dot(q);
+
+        if (v < 0.0 || u + v > 1.0) {
+            return {
+                hit: false,
+                distance: Infinity,
+                point: { x: 0, y: 0, z: 0 },
+                normal: { x: 0, y: 0, z: 0 },
+                material: triangle.material
+            };
+        }
+
+        const t = f * edge2.dot(q);
+
+        if (t < 0.001) {
+            return {
+                hit: false,
+                distance: Infinity,
+                point: { x: 0, y: 0, z: 0 },
+                normal: { x: 0, y: 0, z: 0 },
+                material: triangle.material
+            };
+        }
+
+        const hitPoint = rayOrigin.add(rayDir.multiply(t));
+        const normal = edge1.cross(edge2).normalize();
+
+        return {
+            hit: true,
+            distance: t,
+            point: hitPoint.toVec3(),
+            normal: normal.toVec3(),
+            material: triangle.material
+        };
+    }
+
+    private intersectBox(ray: Ray, box: Box): HitInfo {
+        // Slab method for axis-aligned bounding box
+        const rayOrigin = Vector3.fromVec3(ray.origin);
+        const rayDir = Vector3.fromVec3(ray.direction);
+        const min = Vector3.fromVec3(box.min);
+        const max = Vector3.fromVec3(box.max);
+
+        const invDirX = 1.0 / rayDir.x;
+        const invDirY = 1.0 / rayDir.y;
+        const invDirZ = 1.0 / rayDir.z;
+
+        const t1 = (min.x - rayOrigin.x) * invDirX;
+        const t2 = (max.x - rayOrigin.x) * invDirX;
+        const t3 = (min.y - rayOrigin.y) * invDirY;
+        const t4 = (max.y - rayOrigin.y) * invDirY;
+        const t5 = (min.z - rayOrigin.z) * invDirZ;
+        const t6 = (max.z - rayOrigin.z) * invDirZ;
+
+        const tmin = Math.max(Math.max(Math.min(t1, t2), Math.min(t3, t4)), Math.min(t5, t6));
+        const tmax = Math.min(Math.min(Math.max(t1, t2), Math.max(t3, t4)), Math.max(t5, t6));
+
+        if (tmax < 0 || tmin > tmax || tmin < 0.001) {
+            return {
+                hit: false,
+                distance: Infinity,
+                point: { x: 0, y: 0, z: 0 },
+                normal: { x: 0, y: 0, z: 0 },
+                material: box.material
+            };
+        }
+
+        const t = tmin;
+        const hitPoint = rayOrigin.add(rayDir.multiply(t));
+
+        // Calculate normal based on which face was hit
+        const center = min.add(max).multiply(0.5);
+        const p = hitPoint.subtract(center);
+        const d = min.subtract(center).multiply(0.5);
+        const bias = 1.0001;
+
+        let normal = new Vector3(0, 0, 0);
+        if (Math.abs(p.x / d.x) > bias) normal = new Vector3(Math.sign(p.x), 0, 0);
+        else if (Math.abs(p.y / d.y) > bias) normal = new Vector3(0, Math.sign(p.y), 0);
+        else if (Math.abs(p.z / d.z) > bias) normal = new Vector3(0, 0, Math.sign(p.z));
+        else normal = new Vector3(Math.sign(p.x), 0, 0); // fallback
+
+        return {
+            hit: true,
+            distance: t,
+            point: hitPoint.toVec3(),
+            normal: normal.toVec3(),
+            material: box.material
         };
     }
 

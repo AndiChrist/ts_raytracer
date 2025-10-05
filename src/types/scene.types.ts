@@ -30,7 +30,22 @@ export interface Plane {
     material: Material;
 }
 
-export type SceneObject = Sphere | Plane;
+export interface Triangle {
+    type: "triangle";
+    v0: Vec3;
+    v1: Vec3;
+    v2: Vec3;
+    material: Material;
+}
+
+export interface Box {
+    type: "box";
+    min: Vec3;
+    max: Vec3;
+    material: Material;
+}
+
+export type SceneObject = Sphere | Plane | Triangle | Box;
 
 export interface Light {
     position: Vec3;

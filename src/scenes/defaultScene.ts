@@ -1,0 +1,51 @@
+import type { Scene } from '../types/scene.types';
+
+export function getDefaultScene(): Scene {
+    return {
+        camera: {
+            position: { x: 0, y: 1, z: 5 },
+            target: { x: 0, y: 0, z: 0 },
+            fov: 60
+        },
+        lights: [
+            {
+                position: { x: 5, y: 5, z: 5 },
+                color: { r: 1, g: 1, b: 1 },
+                intensity: 1
+            }
+        ],
+        objects: [
+            {
+                type: "sphere",
+                center: { x: 0, y: 0, z: 0 },
+                radius: 1,
+                material: {
+                    color: { r: 1, g: 0.2, b: 0.2 },
+                    reflectivity: 0.3,
+                    shininess: 32
+                }
+            },
+            {
+                type: "sphere",
+                center: { x: -2, y: 0, z: -1 },
+                radius: 0.8,
+                material: {
+                    color: { r: 0.2, g: 1, b: 0.2 },
+                    reflectivity: 0.5,
+                    shininess: 64
+                }
+            },
+            {
+                type: "plane",
+                point: { x: 0, y: -1.5, z: 0 },
+                normal: { x: 0, y: 1, z: 0 },
+                material: {
+                    color: { r: 0.8, g: 0.8, b: 0.8 },
+                    reflectivity: 0.1,
+                    shininess: 8
+                }
+            }
+        ],
+        backgroundColor: { r: 0.1, g: 0.1, b: 0.2 }
+    };
+}

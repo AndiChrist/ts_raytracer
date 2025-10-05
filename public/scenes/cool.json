@@ -1,0 +1,57 @@
+{
+  "camera": {
+    "position": { "x": 0, "y": 3, "z": 10 },
+    "target": { "x": 0, "y": 0, "z": 0 },
+    "fov": 50
+  },
+  "lights": [
+    {
+      "position": { "x": 5, "y": 10, "z": 5 },
+      "color": { "r": 1, "g": 0.9, "b": 0.8 },
+      "intensity": 1.2
+    }
+  ],
+  "objects": [
+    {
+      "type": "sphere",
+      "center": { "x": 0, "y": 0, "z": 0 },
+      "radius": 1.5,
+      "material": {
+        "color": { "r": 1, "g": 0.8, "b": 0 },
+        "reflectivity": 0.7,
+        "shininess": 80
+      }
+    },
+    {
+      "type": "sphere",
+      "center": { "x": -3, "y": 0, "z": -2 },
+      "radius": 1,
+      "material": {
+        "color": { "r": 0.2, "g": 0.5, "b": 1 },
+        "reflectivity": 0.8,
+        "shininess": 100
+      }
+    },
+    {
+      "type": "sphere",
+      "center": { "x": 3, "y": 0, "z": -1 },
+      "radius": 1,
+      "material": {
+        "color": { "r": 1, "g": 0.2, "b": 0.5 },
+        "reflectivity": 0.6,
+        "shininess": 90
+      }
+    },
+    {
+      "type": "plane",
+      "point": { "x": 0, "y": -2, "z": 0 },
+      "normal": { "x": 0, "y": 1, "z": 0 },
+      "material": {
+        "color": { "r": 0.9, "g": 0.9, "b": 0.9 },
+        "reflectivity": 0.3,
+        "shininess": 20
+      }
+    }
+  ],
+  "backgroundColor": { "r": 0.02, "g": 0.02, "b": 0.1 }
+}

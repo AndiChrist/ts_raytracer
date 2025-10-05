@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TypeScript Raytracer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e1e1e 0%, #2d2d30 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 0.5rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+        }
+
+        .canvas-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        canvas {
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            background: #000;
+            width: 100%;
+            height: auto;
+        }
+
+        .progress-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #cccccc;
+        }
+
+        .controls-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-group {
+            margin-bottom: 2rem;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-group h3 {
+            color: #4CAF50;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            width: 100%;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.secondary {
+            background: #555;
+        }
+
+        .btn.secondary:hover:not(:disabled) {
+            background: #666;
+        }
+
+        .setting {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .setting label {
+            font-size: 0.9rem;
+            color: #cccccc;
+            flex: 1;
+        }
+
+        .setting input[type="range"] {
+            flex: 2;
+        }
+
+        .setting span {
+            color: #4CAF50;
+            font-weight: bold;
+            min-width: 30px;
+        }
+
+        select {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.5rem;
+            border-radius: 4px;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            resize: vertical;
+            margin-bottom: 1rem;
+        }
+
+        .status {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #cccccc;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>TypeScript Raytracer</h1>
+        <p>Ein modularer Raytracer mit JSON-basierten Szenen</p>
+    </header>
+
+    <div class="main-content">
+        <div class="canvas-section">
+            <canvas id="raytracer-canvas" width="800" height="600"></canvas>
+
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-text" id="progress-text">Bereit zum Rendern</div>
+            </div>
+
+            <div class="status" id="status">
+                Warte auf Aktion...
+            </div>
+        </div>
+
+        <div class="controls-section">
+            <div class="control-group">
+                <h3>Rendering</h3>
+                <button id="render-btn" class="btn">Szene Rendern</button>
+
+                <div class="setting">
+                    <label for="max-depth">Reflexionstiefe:</label>
+                    <input type="range" id="max-depth" min="1" max="10" value="5">
+                    <span id="depth-value">5</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Vordefinierte Szenen</h3>
+                <select id="preset-scenes">
+                    <option value="">Standard-Szene</option>
+                    <option value="scenes/basic.json">Basis (JSON-File)</option>
+                    <option value="scenes/multi_light.json">Multi Light (JSON-File)</option>
+                    <option value="scenes/reflections.json">Reflexionen (JSON-File)</option>
+                    <option value="scenes/cool.json">Coole Szene (JSON-File)</option>
+                </select>
+                <button id="load-preset" class="btn secondary">Szene Laden</button>
+            </div>
+
+            <div class="control-group">
+                <h3>Szenen-Editor</h3>
+                <textarea id="scene-editor" placeholder="JSON-Szene hier bearbeiten..."></textarea>
+                <button id="load-custom" class="btn secondary">Custom Szene Laden & Rendern</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    console.log('HTML loaded, waiting for app...');
+
+    function waitForApp() {
+        return new Promise((resolve) => {
+            const checkApp = () => {
+                if (window.raytracerApp) {
+                    console.log('App found!');
+                    resolve(window.raytracerApp);
+                } else {
+                    setTimeout(checkApp, 100);
+                }
+            };
+            checkApp();
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        console.log('Waiting for raytracerApp...');
+        const app = await waitForApp();
+        console.log('App ready, initializing UI...');
+
+        const renderBtn = document.getElementById('render-btn');
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+        const maxDepthSlider = document.getElementById('max-depth');
+        const depthValue = document.getElementById('depth-value');
+        const presetSelect = document.getElementById('preset-scenes');
+        const loadPresetBtn = document.getElementById('load-preset');
+        const sceneEditor = document.getElementById('scene-editor');
+        const loadCustomBtn = document.getElementById('load-custom');
+        const status = document.getElementById('status');
+
+        let isRendering = false;
+
+        maxDepthSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            depthValue.textContent = value;
+            app.setMaxDepth(parseInt(value));
+            status.textContent = `Reflexionstiefe auf ${value} gesetzt`;
+        });
+
+        renderBtn.addEventListener('click', async () => {
+            if (isRendering) return;
+
+            isRendering = true;
+            renderBtn.disabled = true;
+            status.textContent = 'Rendering läuft...';
+
+            const startTime = performance.now();
+
+            try {
+                await app.render((progress) => {
+                    progressFill.style.width = progress + '%';
+                    progressText.textContent = `Rendering: ${progress.toFixed(1)}%`;
+                });
+
+                const endTime = performance.now();
+                const renderTime = (endTime - startTime).toFixed(1);
+                status.textContent = `✅ Rendering abgeschlossen in ${renderTime}ms`;
+                progressText.textContent = 'Fertig!';
+
+            } catch (error) {
+                console.error('Rendering error:', error);
+                status.textContent = '❌ Rendering-Fehler: ' + error.message;
+            } finally {
+                isRendering = false;
+                renderBtn.disabled = false;
+            }
+        });
+
+        loadPresetBtn.addEventListener('click', async () => {
+            const scenePath = presetSelect.value;
+
+            try {
+                if (!scenePath) {
+                    const defaultScene = window.getDefaultScene();
+                    await app.loadScene(JSON.stringify(defaultScene));
+                    sceneEditor.value = JSON.stringify(defaultScene, null, 2);
+                    status.textContent = '✅ Standard-Szene geladen';
+                } else {
+                    await app.loadScene(scenePath);
+
+                    const response = await fetch(scenePath);
+                    const sceneData = await response.json();
+                    sceneEditor.value = JSON.stringify(sceneData, null, 2);
+
+                    status.textContent = `✅ Szene geladen: ${scenePath}`;
+                }
+            } catch (error) {
+                console.error('Error loading preset:', error);
+                status.textContent = '❌ Fehler beim Laden: ' + error.message;
+            }
+        });
+
+        loadCustomBtn.addEventListener('click', async () => {
+            try {
+                const sceneText = sceneEditor.value.trim();
+                if (!sceneText) {
+                    status.textContent = '❌ Editor ist leer';
+                    return;
+                }
+
+                JSON.parse(sceneText);
+
+                await app.loadScene(sceneText);
+                status.textContent = '✅ Custom Szene geladen';
+            } catch (error) {
+                console.error('Error loading custom scene:', error);
+                status.textContent = '❌ Fehler: ' + error.message;
+            }
+        });
+
+        status.textContent = '✅ UI bereit - Szene laden und rendern!';
+        console.log('UI initialized successfully');
+    });
+</script>
+</body>
+</html>

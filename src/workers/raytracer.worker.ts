@@ -1,168 +1,104 @@
 import type { Scene, Ray, HitInfo, Color, SceneObject, Sphere, Plane, Triangle, Box, Light } from '../types/scene.types';
-import { Vector3 } from '../math/Vector3';
 
-export class Raytracer {
-    private canvas: HTMLCanvasElement;
-    private ctx: CanvasRenderingContext2D;
+class Vector3 {
+    constructor(public x: number, public y: number, public z: number) {}
+
+    static fromVec3(v: { x: number; y: number; z: number }): Vector3 {
+        return new Vector3(v.x, v.y, v.z);
+    }
+
+    add(other: Vector3): Vector3 {
+        return new Vector3(this.x + other.x, this.y + other.y, this.z + other.z);
+    }
+
+    subtract(other: Vector3): Vector3 {
+        return new Vector3(this.x - other.x, this.y - other.y, this.z - other.z);
+    }
+
+    multiply(scalar: number): Vector3 {
+        return new Vector3(this.x * scalar, this.y * scalar, this.z * scalar);
+    }
+
+    dot(other: Vector3): number {
+        return this.x * other.x + this.y * other.y + this.z * other.z;
+    }
+
+    cross(other: Vector3): Vector3 {
+        return new Vector3(
+            this.y * other.z - this.z * other.y,
+            this.z * other.x - this.x * other.z,
+            this.x * other.y - this.y * other.x
+        );
+    }
+
+    length(): number {
+        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    }
+
+    normalize(): Vector3 {
+        const length = this.length();
+        if (length === 0) return new Vector3(0, 0, 0);
+        return new Vector3(this.x / length, this.y / length, this.z / length);
+    }
+
+    reflect(normal: Vector3): Vector3 {
+        return this.subtract(normal.multiply(2 * this.dot(normal)));
+    }
+
+    toVec3(): { x: number; y: number; z: number } {
+        return { x: this.x, y: this.y, z: this.z };
+    }
+}
+
+interface WorkerMessage {
+    scene: Scene;
+    width: number;
+    height: number;
+    startRow: number;
+    endRow: number;
+    maxDepth: number;
+}
+
+interface WorkerResponse {
+    startRow: number;
+    endRow: number;
+    pixels: Uint8ClampedArray;
+}
+
+class WorkerRaytracer {
     private scene!: Scene;
-    private width: number;
-    private height: number;
-    private maxDepth: number = 5;
-    private useWorkers: boolean = true;
-    private workerCount: number = navigator.hardwareConcurrency || 4;
+    private width!: number;
+    private height!: number;
+    private maxDepth!: number;
 
-    constructor(canvas: HTMLCanvasElement) {
-        this.canvas = canvas;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Could not get 2D context');
-        this.ctx = ctx;
-        this.width = canvas.width;
-        this.height = canvas.height;
-    }
+    render(data: WorkerMessage): WorkerResponse {
+        this.scene = data.scene;
+        this.width = data.width;
+        this.height = data.height;
+        this.maxDepth = data.maxDepth;
 
-    loadScene(sceneData: Scene | string): void {
-        if (typeof sceneData === 'string') {
-            this.scene = JSON.parse(sceneData);
-        } else {
-            this.scene = sceneData;
-        }
-        console.log('Scene loaded:', this.scene);
-    }
+        const rowCount = data.endRow - data.startRow;
+        const pixels = new Uint8ClampedArray(rowCount * this.width * 4);
 
-    async loadSceneFromFile(jsonPath: string): Promise<void> {
-        try {
-            const response = await fetch(jsonPath);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            this.scene = await response.json();
-            console.log('Scene loaded from file:', jsonPath);
-        } catch (error) {
-            console.error('Error loading scene:', error);
-            throw error;
-        }
-    }
-
-    setMaxDepth(depth: number): void {
-        this.maxDepth = depth;
-    }
-
-    setUseWorkers(useWorkers: boolean): void {
-        this.useWorkers = useWorkers;
-    }
-
-    setWorkerCount(count: number): void {
-        this.workerCount = Math.max(1, Math.min(count, 16));
-    }
-
-    async render(progressCallback?: (progress: number) => void): Promise<void> {
-        if (!this.scene) {
-            throw new Error('No scene loaded');
-        }
-
-        if (this.useWorkers) {
-            return this.renderWithWorkers(progressCallback);
-        } else {
-            return this.renderSingleThreaded(progressCallback);
-        }
-    }
-
-    private async renderWithWorkers(progressCallback?: (progress: number) => void): Promise<void> {
-        const imageData = this.ctx.createImageData(this.width, this.height);
-        const rowsPerWorker = Math.ceil(this.height / this.workerCount);
-        const workers: Worker[] = [];
-        const promises: Promise<void>[] = [];
-
-        let completedRows = 0;
-
-        for (let i = 0; i < this.workerCount; i++) {
-            const startRow = i * rowsPerWorker;
-            const endRow = Math.min(startRow + rowsPerWorker, this.height);
-
-            if (startRow >= this.height) break;
-
-            const worker = new Worker(
-                new URL('../workers/raytracer.worker.ts', import.meta.url),
-                { type: 'module' }
-            );
-            workers.push(worker);
-
-            const promise = new Promise<void>((resolve, reject) => {
-                worker.onmessage = (e) => {
-                    const { startRow, endRow, pixels } = e.data;
-
-                    // Copy pixels to imageData
-                    for (let y = startRow; y < endRow; y++) {
-                        for (let x = 0; x < this.width; x++) {
-                            const srcIndex = ((y - startRow) * this.width + x) * 4;
-                            const dstIndex = (y * this.width + x) * 4;
-                            imageData.data[dstIndex] = pixels[srcIndex];
-                            imageData.data[dstIndex + 1] = pixels[srcIndex + 1];
-                            imageData.data[dstIndex + 2] = pixels[srcIndex + 2];
-                            imageData.data[dstIndex + 3] = pixels[srcIndex + 3];
-                        }
-                    }
-
-                    completedRows += (endRow - startRow);
-                    if (progressCallback) {
-                        const progress = (completedRows / this.height) * 100;
-                        progressCallback(progress);
-                    }
-
-                    worker.terminate();
-                    resolve();
-                };
-
-                worker.onerror = (error) => {
-                    worker.terminate();
-                    reject(error);
-                };
-
-                worker.postMessage({
-                    scene: this.scene,
-                    width: this.width,
-                    height: this.height,
-                    startRow,
-                    endRow,
-                    maxDepth: this.maxDepth
-                });
-            });
-
-            promises.push(promise);
-        }
-
-        await Promise.all(promises);
-        this.ctx.putImageData(imageData, 0, 0);
-        if (progressCallback) progressCallback(100);
-    }
-
-    private async renderSingleThreaded(progressCallback?: (progress: number) => void): Promise<void> {
-        const imageData = this.ctx.createImageData(this.width, this.height);
-
-        for (let y = 0; y < this.height; y++) {
+        for (let y = data.startRow; y < data.endRow; y++) {
             for (let x = 0; x < this.width; x++) {
                 const ray = this.getRay(x, y);
                 const color = this.traceRay(ray, this.maxDepth);
 
-                const index = (y * this.width + x) * 4;
-                imageData.data[index] = Math.min(255, Math.max(0, color.r * 255));
-                imageData.data[index + 1] = Math.min(255, Math.max(0, color.g * 255));
-                imageData.data[index + 2] = Math.min(255, Math.max(0, color.b * 255));
-                imageData.data[index + 3] = 255;
-            }
-
-            if (progressCallback && y % 10 === 0) {
-                const progress = (y / this.height) * 100;
-                progressCallback(progress);
-
-                if (y % 50 === 0) {
-                    await new Promise(resolve => setTimeout(resolve, 1));
-                }
+                const localY = y - data.startRow;
+                const index = (localY * this.width + x) * 4;
+                pixels[index] = Math.min(255, Math.max(0, color.r * 255));
+                pixels[index + 1] = Math.min(255, Math.max(0, color.g * 255));
+                pixels[index + 2] = Math.min(255, Math.max(0, color.b * 255));
+                pixels[index + 3] = 255;
             }
         }
 
-        this.ctx.putImageData(imageData, 0, 0);
-        if (progressCallback) progressCallback(100);
+        return {
+            startRow: data.startRow,
+            endRow: data.endRow,
+            pixels
+        };
     }
 
     private getRay(x: number, y: number): Ray {
@@ -365,7 +301,6 @@ export class Raytracer {
     }
 
     private intersectTriangle(ray: Ray, triangle: Triangle): HitInfo {
-        // Möller-Trumbore intersection algorithm
         const rayOrigin = Vector3.fromVec3(ray.origin);
         const rayDir = Vector3.fromVec3(ray.direction);
         const v0 = Vector3.fromVec3(triangle.v0);
@@ -439,7 +374,6 @@ export class Raytracer {
     }
 
     private intersectBox(ray: Ray, box: Box): HitInfo {
-        // Slab method for axis-aligned bounding box
         const rayOrigin = Vector3.fromVec3(ray.origin);
         const rayDir = Vector3.fromVec3(ray.direction);
         const min = Vector3.fromVec3(box.min);
@@ -472,7 +406,6 @@ export class Raytracer {
         const t = tmin;
         const hitPoint = rayOrigin.add(rayDir.multiply(t));
 
-        // Calculate normal based on which face was hit
         const center = min.add(max).multiply(0.5);
         const p = hitPoint.subtract(center);
         const d = min.subtract(center).multiply(0.5);
@@ -482,7 +415,7 @@ export class Raytracer {
         if (Math.abs(p.x / d.x) > bias) normal = new Vector3(Math.sign(p.x), 0, 0);
         else if (Math.abs(p.y / d.y) > bias) normal = new Vector3(0, Math.sign(p.y), 0);
         else if (Math.abs(p.z / d.z) > bias) normal = new Vector3(0, 0, Math.sign(p.z));
-        else normal = new Vector3(Math.sign(p.x), 0, 0); // fallback
+        else normal = new Vector3(Math.sign(p.x), 0, 0);
 
         return {
             hit: true,
@@ -528,3 +461,10 @@ export class Raytracer {
         };
     }
 }
+
+const workerRaytracer = new WorkerRaytracer();
+
+self.onmessage = (e: MessageEvent<WorkerMessage>) => {
+    const result = workerRaytracer.render(e.data);
+    self.postMessage(result);
+};

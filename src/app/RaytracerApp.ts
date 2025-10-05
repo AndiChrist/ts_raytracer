@@ -44,6 +44,14 @@ export class RaytracerApp {
         this.raytracer.setMaxDepth(depth);
     }
 
+    setUseWorkers(useWorkers: boolean): void {
+        this.raytracer.setUseWorkers(useWorkers);
+    }
+
+    setWorkerCount(count: number): void {
+        this.raytracer.setWorkerCount(count);
+    }
+
     exportImage(filename: string = 'raytraced-image.png'): void {
         try {
             this.canvas.toBlob((blob) => {

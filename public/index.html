@@ -237,6 +237,19 @@
                     <input type="range" id="max-depth" min="1" max="10" value="5">
                     <span id="depth-value">5</span>
                 </div>
+
+                <div class="setting">
+                    <label for="use-workers">
+                        <input type="checkbox" id="use-workers" checked style="width: auto; margin-right: 5px;">
+                        Web Workers (Multi-Threading)
+                    </label>
+                </div>
+
+                <div class="setting">
+                    <label for="worker-count">Worker-Anzahl:</label>
+                    <input type="range" id="worker-count" min="1" max="16" value="4">
+                    <span id="worker-count-value">4</span>
+                </div>
             </div>
 
             <div class="control-group">
@@ -289,6 +302,9 @@
         const progressText = document.getElementById('progress-text');
         const maxDepthSlider = document.getElementById('max-depth');
         const depthValue = document.getElementById('depth-value');
+        const useWorkersCheckbox = document.getElementById('use-workers');
+        const workerCountSlider = document.getElementById('worker-count');
+        const workerCountValue = document.getElementById('worker-count-value');
         const presetSelect = document.getElementById('preset-scenes');
         const loadPresetBtn = document.getElementById('load-preset');
         const sceneEditor = document.getElementById('scene-editor');
@@ -297,11 +313,31 @@
 
         let isRendering = false;
 
+        // Detect CPU core count and set default
+        const coreCount = navigator.hardwareConcurrency || 4;
+        workerCountSlider.value = coreCount.toString();
+        workerCountValue.textContent = coreCount.toString();
+        app.setWorkerCount(coreCount);
+
         maxDepthSlider.addEventListener('input', (e) => {
             const value = e.target.value;
             depthValue.textContent = value;
             app.setMaxDepth(parseInt(value));
             status.textContent = `Reflexionstiefe auf ${value} gesetzt`;
+        });
+
+        useWorkersCheckbox.addEventListener('change', (e) => {
+            const useWorkers = e.target.checked;
+            app.setUseWorkers(useWorkers);
+            workerCountSlider.disabled = !useWorkers;
+            status.textContent = `Web Workers ${useWorkers ? 'aktiviert' : 'deaktiviert'}`;
+        });
+
+        workerCountSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            workerCountValue.textContent = value;
+            app.setWorkerCount(parseInt(value));
+            status.textContent = `Worker-Anzahl auf ${value} gesetzt`;
         });
 
         renderBtn.addEventListener('click', async () => {

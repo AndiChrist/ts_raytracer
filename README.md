@@ -23,6 +23,8 @@ Ein modularer, browser-basierter Raytracer implementiert in TypeScript mit JSON-
 - 🎨 **Phong-Beleuchtung** - diffuse und spekulare Reflexion
 - 🪞 **Rekursive Reflexionen** - konfigurierbare Tiefe
 - 💡 **Mehrere Lichtquellen** - mit Schattenberechnung
+- 🔺 **Geometrische Formen** - Sphären, Ebenen, Dreiecke, Boxen
+- 💾 **PNG-Export** - speichere gerenderte Bilder direkt
 - 📦 **Webpack-Bundle** - optimierte Builds
 - 🎮 **Interaktiver Editor** - Szenen in Echtzeit bearbeiten
 - ⚡ **Hot-Reload** - sofortige Updates während der Entwicklung
@@ -207,8 +209,11 @@ Löscht das `dist/` Verzeichnis.
 
 1. Wähle eine Szene aus dem Dropdown:
    - **Standard-Szene** - Einfache Szene mit 2 Kugeln
-   - **Basis** - Loaded aus `scenes/basic.json`
+   - **Basis** - Geladen aus `scenes/basic.json`
+   - **Multi Light** - Szene mit mehreren Lichtquellen
    - **Reflexionen** - Szene mit hohen Reflexionswerten
+   - **Coole Szene** - Kreative Szene
+   - **Geometrische Formen** - Demonstriert alle verfügbaren Formen (Boxen, Dreiecke)
 
 2. Klicke auf **"Szene Laden"**
 
@@ -220,7 +225,14 @@ Löscht das `dist/` Verzeichnis.
 2. **Klicke auf "Custom Szene Laden & Rendern"**
 3. Das Bild wird automatisch gerendert
 
-### 4. Parameter anpassen
+### 4. Bild exportieren
+
+Nach dem Rendern:
+1. Klicke auf **"Als PNG Exportieren"**
+2. Das Bild wird automatisch mit Zeitstempel heruntergeladen
+3. Dateiname-Format: `raytracer-YYYY-MM-DDTHH-MM-SS.png`
+
+### 5. Parameter anpassen
 
 **Reflexionstiefe ändern:**
 - Slider bewegen (1-10)
@@ -240,7 +252,7 @@ Löscht das `dist/` Verzeichnis.
 }
 ```
 
-### 5. Rendering-Performance
+### 6. Rendering-Performance
 
 **Typische Renderzeiten (800x600):**
 - Einfache Szene (2-3 Objekte): ~2-5 Sekunden
@@ -289,7 +301,7 @@ Löscht das `dist/` Verzeichnis.
 
 ### Objekte
 
-**Kugel:**
+**Sphäre (Kugel):**
 ```json
 {
   "type": "sphere",
@@ -309,6 +321,27 @@ Löscht das `dist/` Verzeichnis.
   "type": "plane",
   "point": { "x": 0, "y": -2, "z": 0 },      // Punkt auf der Ebene
   "normal": { "x": 0, "y": 1, "z": 0 },      // Normalenvektor
+  "material": { ... }
+}
+```
+
+**Dreieck:**
+```json
+{
+  "type": "triangle",
+  "v0": { "x": -1, "y": 0, "z": 0 },         // Eckpunkt 1
+  "v1": { "x": 1, "y": 0, "z": 0 },          // Eckpunkt 2
+  "v2": { "x": 0, "y": 2, "z": 0 },          // Eckpunkt 3
+  "material": { ... }
+}
+```
+
+**Box (Achsen-ausgerichteter Quader):**
+```json
+{
+  "type": "box",
+  "min": { "x": -1, "y": -1, "z": -1 },      // Minimale Ecke
+  "max": { "x": 1, "y": 1, "z": 1 },         // Maximale Ecke
   "material": { ... }
 }
 ```
@@ -353,7 +386,60 @@ Löscht das `dist/` Verzeichnis.
 }
 ```
 
-### Beispiel 2: Spiegelsaal
+### Beispiel 2: Geometrische Formen
+
+```json
+{
+  "camera": {
+    "position": { "x": 0, "y": 2, "z": 8 },
+    "target": { "x": 0, "y": 0, "z": 0 },
+    "fov": 60
+  },
+  "lights": [
+    {
+      "position": { "x": 5, "y": 8, "z": 5 },
+      "color": { "r": 1, "g": 1, "b": 1 },
+      "intensity": 1.2
+    }
+  ],
+  "objects": [
+    {
+      "type": "box",
+      "min": { "x": -1, "y": -0.5, "z": -1 },
+      "max": { "x": 1, "y": 0.5, "z": 1 },
+      "material": {
+        "color": { "r": 0.8, "g": 0.3, "b": 0.3 },
+        "reflectivity": 0.3,
+        "shininess": 50
+      }
+    },
+    {
+      "type": "triangle",
+      "v0": { "x": -2, "y": 0, "z": -1 },
+      "v1": { "x": -3, "y": 1.5, "z": -1 },
+      "v2": { "x": -1, "y": 1.5, "z": -1 },
+      "material": {
+        "color": { "r": 0.3, "g": 0.8, "b": 0.3 },
+        "reflectivity": 0.2,
+        "shininess": 40
+      }
+    },
+    {
+      "type": "plane",
+      "point": { "x": 0, "y": -0.5, "z": 0 },
+      "normal": { "x": 0, "y": 1, "z": 0 },
+      "material": {
+        "color": { "r": 0.7, "g": 0.7, "b": 0.7 },
+        "reflectivity": 0.2,
+        "shininess": 20
+      }
+    }
+  ],
+  "backgroundColor": { "r": 0.05, "g": 0.05, "b": 0.15 }
+}
+```
+
+### Beispiel 3: Spiegelsaal
 
 ```json
 {
@@ -476,17 +562,33 @@ taskkill /PID <PID> /F
 
 ## 🚀 Erweiterungen
 
+### Projektarchitektur
+
+Das Projekt ist modular strukturiert:
+
+```
+src/
+├── types/          # TypeScript Interfaces und Typen
+├── math/           # Vector3 und mathematische Utilities
+├── core/           # Raytracer Engine mit Intersection-Algorithmen
+├── app/            # RaytracerApp Wrapper-Klasse
+├── scenes/         # Szenen-Konfigurationen
+└── main.ts         # Bootstrap und Initialisierung
+```
+
 ### Neue Objekttypen hinzufügen
 
-Siehe ausführliche Anleitung im Projektordner: `docs/EXTENDING.md`
+**Schritte:**
+1. Interface in `src/types/scene.types.ts` definieren
+2. Union Type `SceneObject` erweitern
+3. Intersect-Methode in `src/core/Raytracer.ts` implementieren
+4. Case in `intersectObject()` hinzufügen
 
-**Kurzübersicht:**
-1. Interface in `src/main.ts` definieren
-2. Intersect-Methode implementieren
-3. In `intersectObject()` Fall hinzufügen
+**Beispiel:** Siehe die Implementierungen von `intersectTriangle()` (Möller-Trumbore) oder `intersectBox()` (Slab-Methode)
 
 ### Performance-Optimierungen
 
+Mögliche Verbesserungen:
 - **Web Workers** für Multi-Threading
 - **Spatial Data Structures** (BVH, Octree)
 - **Adaptive Sampling** für Anti-Aliasing
@@ -494,11 +596,12 @@ Siehe ausführliche Anleitung im Projektordner: `docs/EXTENDING.md`
 
 ### Weitere Features
 
+Ideen für zukünftige Features:
 - Texturen auf Objekten
 - Volumetrisches Rendering
 - Verschiedene Kamera-Modi
 - Animation / Kamera-Bewegung
-- Export als PNG/JPEG
+- Weitere Formen (Zylinder, Kegel, Torus)
 
 ## 📝 Lizenz
 
